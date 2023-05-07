@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Free Web tutorials" />
+    <meta name="keywords" content="HTML, CSS, JavaScript" />
+    <meta name="author" content="Diana Rodriguez Cosme" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="#" type="image/x-icon" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>QR Code and TOTP authenticator</title>
+
+    <style>
+      .centerE {
+        border: 3px solid #D5FAF3;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 40%;
+      }
+    </style>
+  </head>
+
+
+  <body>
+      <div class="flex items-center justify-center min-h-screen from-teal-50 via-teal-200 to-teal-300 bg-gradient-to-br">
+        <div class="w-full max-w-lg px-10 py-8 mx-auto bg-white rounded-lg shadow-xl font-mono">
+          <header class="text-center font-bold">
+            <h1 class="text-3xl">TOTP and QR Code</h1>
+            <h2 class="text-xs">Time-Based One-Time Password (TOTP) and QR Code with google authenticator</h2>
+            <sup>
+              Date:
+              <span style="border-bottom: 1px solid black" id="server-started"></span>
+            </sup>
+          </header>
+          
+          <main>
+            <div class="justify-center"  id="gen-qrcode">
+              <div id="qrcode" class="text-center" style="min-width: 230px; min-height: 230px"><span class="centerE"></span></div>
+              <button onclick="genTotp()" class="w-full bg-cyan-600 text-white text-sm font-bold py-2 px-4 rounded-md hover:bg-indigo-600 transition duration-300">
+                Genera Codigo QR y Escanea con Google authenticator
+              </button>
+            </div>
+            
+            <br />
+            <hr />
+            <br />
+            
+            <div class="text-center mb-10">
+              <h3 class="text-center font-bold">Valida tu Codigo TOTP</h3>         
+              <p>
+                Hay existen <span style="font-weight: bold; font-size: 115%" id="user-count"> 0 </span> registros de usuario(s)
+              </p>
+            </div>
+
+            <hr />
+
+            <div class="text-right mb-10 mt-10">
+              <form id="verify-totp-form" action="#" onsubmit="verifyTotp()" class="mb-5">
+              <label for="userId" class="font-bold mb-5">Ingresa el User ID a verificar</label>
+              <input
+                type="number"
+                name="userId"
+                id="userId"
+                placeholder="Enter user ID here"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 mb-5 mt-5"
+              />
+
+              <label for="totpcode" class="font-bold mb-5">
+                Ingresa el codigo TOTP
+              </label>
+              <input
+                type="number"
+                name="totpcode"
+                id="totpcode"
+                placeholder="Enter 6-digit code"
+                class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 mb-5 mt-5"
+              /><br />
+              <input type="submit" value="Verify TOTP" class="bg-cyan-600 text-white text-sm font-bold py-2 px-4 rounded-md hover:bg-indigo-600 transition duration-300"/>
+              </form>
+            </div>
+
+            
+
+            <h3 class="text-center px-3 py-2 border border-gray-300 rounded-md bg-cyan-600 text-white font-bold mb-5">Es valido tu codigo?</h3>
+            <h4 class="text-center font-bold text-indigo-700 mt-10" id="verified"></h4>
+        
+
+            <br />
+            <br />
+          </main>
+          
+        </div>
+      </div>
+    </div>
+
+    
+
+    
+    <scriptbox style="display: none !important; z-index: -1" area-hidden="true">
+      <!-- Axios -->
+      <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+      <!-- Local Script -->
+      <script>
+        const qrcode = document.getElementById("qrcode");
+        const userCountSpan = document.getElementById("user-count");
+        const serverStartedSpan = document.getElementById("server-started");
+
+        const getServerStartDate = () => {
+          axios
+            .get("/serverStarted")
+            .then((res) => {
+              let serverStarted = new Date(res.data);
+              serverStartedSpan.innerText = serverStarted.toLocaleDateString();
+            })
+            .catch((err) => {
+              console.log(err);
+            });
+        };
+        getServerStartDate();
+
+        const getUserCount = () => {
+          axios
+            .get("/userCount")
+            .then(function (response) {
+              // handle success
+              userCountSpan.innerText = "";
+              userCountSpan.innerText = response.data;
+            })
+            .catch(function (error) {
+              // handle error
+              console.log(error);
+            });
+        };
+        getUserCount();
+
+        const genTotp = () => {
+          axios
+            .post("/genTotp")
+            .then(function (response) {
+              // handle success
+              qrcode.innerHTML = "";
+              qrcode.insertAdjacentHTML(
+                `afterbegin`,
+                `
+                  <div class="centerE" >
+                    <img src="${response.data.qrcode_url}">
+                  </div>
+                  <p>QR Code generated for user <strong style="font-size: 125%">${response.data.user}</strong></p>
+                `
+              );
+              getUserCount();
+            })
+            .catch(function (error) {
+              // handle error
+              console.log(error);
+            });
+        };
+
+        const verifyTotp = () => {
+          event.preventDefault();
+
+          let userId = document.getElementById("userId").value;
+          let totpcode = document.getElementById("totpcode").value;
+
+          if (!userId || !totpcode) {
+            return;
+          }
+
+          axios
+            .post(`/verify/${userId}/totpcode/${totpcode}`)
+            .then((response) => {
+              // handle success
+              document.getElementById("verified").innerText = response.data;
+            })
+            .catch((error) => {
+              // handle error
+              console.log(error);
+            });
+        };
+      </script>
+    </scriptbox>
+  </body>
+</html>
